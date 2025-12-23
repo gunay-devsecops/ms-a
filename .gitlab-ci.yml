@@ -1,0 +1,49 @@
+stages:
+  - setup-root-policies
+  - generate-service-token
+
+variables:
+  VAULT_ADDR: "http://10.22.255.223:8200"
+  POLICY_REPO: "https://github.com/gunay-devsecops/vault-policies.git"
+  POLICY_BRANCH: "main"
+
+# Root ilə policy yaratmaq
+setup_root_policies:
+  stage: setup-root-policies
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache bash git gettext curl unzip
+    - wget https://releases.hashicorp.com/vault/1.15.5/vault_1.15.5_linux_amd64.zip
+    - unzip vault_1.15.5_linux_amd64.zip
+    - mv vault /usr/local/bin/
+  script:
+    - echo "Policy template repo klonlanır"
+    - git clone --branch "$POLICY_BRANCH" "$POLICY_REPO" policy-src
+    - echo "service-a policy faylı generasiya olunur"
+    - envsubst < policy-src/templates/microservice-policy.hcl.tpl > service-a.hcl
+    - echo "Root ilə Vault login olunur"
+    - vault login $ROOT_VAULT_TOKEN
+    - echo "service-a policy Vault-a yazılır"
+    - vault policy write service-a service-a.hcl
+    - echo "LDAP qrupuna policy təhkim olunur"
+    - vault write auth/ldap/groups/VaultServiceAccounts policies="forvault,default,service-a"
+  only:
+    - main
+
+# Mikroservis tokenlərini yaratmaq
+generate_service_token:
+  stage: generate-service-token
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache bash git gettext curl unzip
+    - wget https://releases.hashicorp.com/vault/1.15.5/vault_1.15.5_linux_amd64.zip
+    - unzip vault_1.15.5_linux_amd64.zip
+    - mv vault /usr/local/bin/
+  script:
+    - echo "Vault login (forvault LDAP)"
+    - vault login -method=ldap username="$VAULT_USERNAME" password="$VAULT_PASSWORD"
+    - echo "Service-a token yaradılır"
+    - vault token create -policy="service-a" -ttl="24h" -display-name="service-a-runtime"
+  only:
+    - main
+
