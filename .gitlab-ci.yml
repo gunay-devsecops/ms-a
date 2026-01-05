@@ -4,7 +4,7 @@ stages:
 
 variables:
   VAULT_ADDR: "http://10.22.255.223:8200"
-  POLICY_REPO: "https://github.com/gunay-devsecops/vault-policies.git"
+  POLICY_REPO: "https://github.com/gunay-devsecops/vault-ms-policies.git"
   POLICY_BRANCH: "main"
 
 # Root ilə policy yaratmaq
